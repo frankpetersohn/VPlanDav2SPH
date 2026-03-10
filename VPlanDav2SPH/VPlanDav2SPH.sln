@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36429.23 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VPlanDav2SPH", "VPlanDav2SPH.csproj", "{32FF8C17-9669-4F29-B084-4F01A307EBBB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{32FF8C17-9669-4F29-B084-4F01A307EBBB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32FF8C17-9669-4F29-B084-4F01A307EBBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32FF8C17-9669-4F29-B084-4F01A307EBBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32FF8C17-9669-4F29-B084-4F01A307EBBB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3771390A-4250-40C2-B73D-76448B91BFE3}
+	EndGlobalSection
+EndGlobal
