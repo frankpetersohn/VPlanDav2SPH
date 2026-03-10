@@ -305,7 +305,11 @@ namespace VPlanDav2SPH
                     if(change.timeId != null)
                     {
                         Event e = events.Find(a => a.lessonTimes.Exists(x => x.timeId == change.timeId));
-                        if (e != null) entry.Fach = e.subject;
+                        if (e != null)
+                        {
+                            entry.Fach = e.subject;
+                            entry.Raum = string.Join(", ", e.rooms);
+                        }
                     }
 
                     vplan.Add(entry);
