@@ -15,9 +15,13 @@ namespace VPlanDav2SPH
         static void Main(string[] args)
         {
             int daysToExport = 2;
-            string pfad = "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\StPl_20260309.davinci";
-
+          //  string pfad = "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\StPl_20260309.davinci";
+            string pfad = "D:\\OneDrive - Berufliche Schulen Schwalmstadt\\Dokumente\\StPl-260310.daVinci";
             //string pfad = "C:\\Users\\PetersohnFrank\\OneDrive - Berufliche Schulen Schwalmstadt\\Schule\\Stundenplan\\StPl_260306.daVinci";
+            //string csvPath = "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\vplan.csv";
+            string csvPath = "C:\\Users\\Petersohn.VERWBSCAMPUS\\Downloads\\vplan.csv";
+
+
             try
             {
                 XDocument doc = XDocument.Load(pfad);
@@ -95,6 +99,49 @@ namespace VPlanDav2SPH
                             end = AbsenceTime.getDateTime((string)item.Element("End")),
                             name = (string)item.Element("Name"),
                         }).ToList();
+                var absenceReasons = doc
+                       .Element("Storage")
+                       ?.Element("Directories")
+                       ?.Element("ClassAbsenceReasons")                     
+                       ?.Elements("Items")
+                       ?.Elements("Item")
+                       .Select(item => new Reason
+                       {
+                           id = (string)item.Attribute("ID"),
+                           typ = (string)item.Attribute("Class"),
+                           name = (string)item.Element("Name"),
+                           code = (string)item.Element("Code"),
+                           key = (string)item.Element("Key"),
+                       }).ToList();
+                absenceReasons.AddRange( doc
+                    .Element("Storage")
+                    ?.Element("Directories")
+                    ?.Element("TeacherAbsenceReasons")
+                    ?.Elements("Items")
+                    ?.Elements("Item")
+                    .Select(item => new Reason
+                    {
+                        id = (string)item.Attribute("ID"),
+                        typ = (string)item.Attribute("Class"),
+                        name = (string)item.Element("Name"),
+                        code = (string)item.Element("Code"),
+                        key = (string)item.Element("Key"),
+                    }).ToList());
+                absenceReasons.AddRange(doc
+                    .Element("Storage")
+                    ?.Element("Directories")
+                    ?.Element("ClassAbsenceReason")
+                    ?.Elements("Items")
+                    ?.Elements("Item")
+                    .Select(item => new Reason
+                    {
+                        id = (string)item.Attribute("ID"),
+                        typ = (string)item.Attribute("Class"),
+                        name = (string)item.Element("Name"),
+                        code = (string)item.Element("Code"),
+                        key = (string)item.Element("Key"),
+                    }).ToList());
+              
 
                 var events = doc
                      .Element("Storage")
@@ -181,6 +228,7 @@ namespace VPlanDav2SPH
                         if (absenceTime.teacherId != null)
                         {
                             entry.Lehrer = teachers.Find(a => a.id.Equals(absenceTime.teacherId)).kuerzel;
+                             
                         }
                         if (absenceTime.typ == "ClassAbsenceTime" && absenceTime.schoolClassId != null)
                         {
@@ -213,7 +261,7 @@ namespace VPlanDav2SPH
 
 
 
-                StandIn.generateCSV(vplan, "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\vplan.csv");
+                StandIn.generateCSV(vplan, csvPath);
 
                 
                 Console.ReadLine();
