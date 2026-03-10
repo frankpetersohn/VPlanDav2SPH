@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web;
 using System.Xml.Linq;
 
 namespace VPlanDav2SPH
@@ -15,11 +16,11 @@ namespace VPlanDav2SPH
         static void Main(string[] args)
         {
             int daysToExport = 2;
-          //  string pfad = "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\StPl_20260309.davinci";
-            string pfad = "D:\\OneDrive - Berufliche Schulen Schwalmstadt\\Dokumente\\StPl-260310.daVinci";
+            string pfad = "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\StPl_260310.davinci";
+            //string pfad = "D:\\OneDrive - Berufliche Schulen Schwalmstadt\\Dokumente\\StPl-260310.daVinci";
             //string pfad = "C:\\Users\\PetersohnFrank\\OneDrive - Berufliche Schulen Schwalmstadt\\Schule\\Stundenplan\\StPl_260306.daVinci";
-            //string csvPath = "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\vplan.csv";
-            string csvPath = "C:\\Users\\Petersohn.VERWBSCAMPUS\\Downloads\\vplan.csv";
+            string csvPath = "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\vplan.csv";
+            //string csvPath = "C:\\Users\\Petersohn.VERWBSCAMPUS\\Downloads\\vplan.csv";
 
 
             try
@@ -80,6 +81,7 @@ namespace VPlanDav2SPH
                             start = AbsenceTime.getDateTime((string)item.Element("Start")),
                             end = AbsenceTime.getDateTime((string)item.Element("End")),
                             absenceReasonID = (string)item.Element("AbsenceReason")?.Attribute("ID"),
+                            absenceReasonTyp = (string)item.Element("AbsenceReason")?.Attribute("Class"),
                             teacherId = (string)item.Element("Teacher")?.Attribute("ID"),
                             schoolClassId = (string)item.Element("Class")?.Attribute("ID"),
                             eventId = (string)item.Element("Event")?.Attribute("ID"),
@@ -130,7 +132,7 @@ namespace VPlanDav2SPH
                 absenceReasons.AddRange(doc
                     .Element("Storage")
                     ?.Element("Directories")
-                    ?.Element("ClassAbsenceReason")
+                    ?.Element("ClassAbsenceReasons")
                     ?.Elements("Items")
                     ?.Elements("Item")
                     .Select(item => new Reason
@@ -153,7 +155,8 @@ namespace VPlanDav2SPH
                          var ev = new Event
                          {
                              id = (string)item.Attribute("ID"),
-                             subjectId = (string)item.Element("Subject")?.Attribute("ID")
+                             subjectId = (string)item.Element("Subject")?.Attribute("ID"),
+                   
                          };
                          if (item.Elements("Rooms") != null)
                          {
@@ -167,7 +170,35 @@ namespace VPlanDav2SPH
                          {
                              ev.addTeacherIds(item.Elements("Teacher")?.Elements("Items")?.Elements("Item"));
                          }
+                         if (item.Elements("Times") != null)
+                         {
+                             IEnumerable<XElement> timeItems = item.Elements("Times")?.Elements("Items")?.Elements("Item");
+                             foreach(XElement timeItem in timeItems)
+                             {
+                                 DateTime startTime = Event.getDateTime((string)timeItem.Element("Start"));
+                                 DateTime endTime = Event.getDateTime((string)timeItem.Element("End"));
+                                 string start = timeFrameRows.Find(a => a.start.TimeOfDay == startTime.TimeOfDay)?.name ?? null;
+                                 string end = timeFrameRows.Find(a => a.end.TimeOfDay == endTime.TimeOfDay)?.name ?? null;
+                                 string dayNo = (string)timeItem.Element("Weekday");
+                                 string timeId = (string)timeItem.Attribute("ID");
+                                 ev.lessonTimes.Add(new Event.LessonTime(dayNo, start, end, timeId));
+                                 ev.addTeacherIds(timeItem.Elements("Teacher")?.Elements("Items")?.Elements("Item"));
+                                 ev.addRoomIds(timeItem.Elements("Rooms")?.Elements("Items")?.Elements("Item"));
 
+                             }
+                         }
+                         foreach (string id in ev.teacherIds) { 
+                            ev.teachers.Add(teachers.Find(a => a.id == id).kuerzel);
+                         }
+                         foreach(string id in ev.roomIds)
+                         {
+                             ev.rooms.Add(rooms.Find(a => a.id == id).code);
+                         }
+                         foreach (string id in ev.classIds)
+                         {
+                             ev.classes.Add(classes.Find(a => a.id == id).code);
+                         }
+                         if(ev.subjectId != null) ev.subject = subjects.Find(a => a.id == ev.subjectId).name;
                          return ev;
                      })
                      .ToList();
@@ -222,17 +253,31 @@ namespace VPlanDav2SPH
                 foreach (var change in relevantChanges)
                 {
                     StandIn entry = new StandIn();
+
+                    string start = timeFrameRows.Find(a => a.start.TimeOfDay == change.start.TimeOfDay)?.name ?? "";
+                    string ende = timeFrameRows.Find(a => a.end.TimeOfDay == change.end.TimeOfDay)?.name ?? "";
+                    if(start == ende)
+                    {
+                        entry.Stunde = start;
+                    }
+                    else
+                    {
+                        entry.Stunde = start + "-" + ende;
+                    }
+
+
+
                     AbsenceTime absenceTime = absenceTimes.Find(a => a.id == change.absenceTimeId);
                     if (absenceTime != null)
                     {
                         if (absenceTime.teacherId != null)
                         {
-                            entry.Lehrer = teachers.Find(a => a.id.Equals(absenceTime.teacherId)).kuerzel;
-                             
+                            entry.Lehrer = teachers.Find(a => a.id.Equals(absenceTime.teacherId))?.kuerzel ?? "";
+                            entry.Hinweis = absenceReasons.Find(a => a.id.Equals(absenceTime.id))?.code ?? "";
                         }
                         if (absenceTime.typ == "ClassAbsenceTime" && absenceTime.schoolClassId != null)
                         {
-                            entry.Klasse = classes.Find(a => a.id == absenceTime.schoolClassId).code;
+                            entry.Klasse = classes.Find(a => a.id == absenceTime.schoolClassId)?.code ?? "";
                             entry.Hinweis = "Klasse fehlt";
                         }
 
@@ -254,7 +299,14 @@ namespace VPlanDav2SPH
 
 
                     entry.Tag = change.start.Day + "." + change.start.Month + "." + change.start.Year;
+                    entry.Hinweis = change.information;
+                    entry.Hinweis2 = change.message;
 
+                    if(change.timeId != null)
+                    {
+                        Event e = events.Find(a => a.lessonTimes.Exists(x => x.timeId == change.timeId));
+                        if (e != null) entry.Fach = e.subject;
+                    }
 
                     vplan.Add(entry);
                 }

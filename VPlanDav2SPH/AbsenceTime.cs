@@ -14,6 +14,8 @@ namespace VPlanDav2SPH
         public DateTime end { get; set; }
         public string teacherId { get; set; }
         public string absenceReasonID { get; set; }
+
+        public string absenceReasonTyp { get; set; }
         public string schoolClassId { get; set; }
         public string eventId { get; set; }
         public string typ { get; set; }
