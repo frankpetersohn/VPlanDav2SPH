@@ -26,6 +26,7 @@ namespace VPlanDav2SPH
 
         public string newsTeacher { get; set; }
         public string newsSubject { get; set; }
+        public string newsClass { get; set; }
 
         public IEnumerable<XElement> newsElement { get; set; }
 

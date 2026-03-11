@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
 using System.Xml.Linq;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Json;
+
 
 namespace VPlanDav2SPH
 {
@@ -15,11 +19,20 @@ namespace VPlanDav2SPH
 
         static void Main(string[] args)
         {
-            int daysToExport = 2;
-            string pfad = "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\StPl_260310.davinci";
+
+            var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json")
+                .Build();
+
+
+            int daysToExport = Convert.ToInt16(config["ExportZeitraum"]);
+            string pfad = config["DavinciDatei"];
+            string csvPath = config["Exportverzeichnis"];
+            //string pfad = "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\StPl_260310.davinci";
             //string pfad = "D:\\OneDrive - Berufliche Schulen Schwalmstadt\\Dokumente\\StPl-260310.daVinci";
             //string pfad = "C:\\Users\\PetersohnFrank\\OneDrive - Berufliche Schulen Schwalmstadt\\Schule\\Stundenplan\\StPl_260306.daVinci";
-            string csvPath = "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\vplan.csv";
+            //string csvPath = "C:\\Users\\PetersohnFrank\\Nextcloud\\Davinci\\vplan.csv";
             //string csvPath = "C:\\Users\\Petersohn.VERWBSCAMPUS\\Downloads\\vplan.csv";
 
 
@@ -132,7 +145,7 @@ namespace VPlanDav2SPH
                 absenceReasons.AddRange(doc
                     .Element("Storage")
                     ?.Element("Directories")
-                    ?.Element("ClassAbsenceReasons")
+                    ?.Element("SkipStandInReasons")
                     ?.Elements("Items")
                     ?.Elements("Item")
                     .Select(item => new Reason
@@ -143,7 +156,21 @@ namespace VPlanDav2SPH
                         code = (string)item.Element("Code"),
                         key = (string)item.Element("Key"),
                     }).ToList());
-              
+                absenceReasons.AddRange(doc
+                    .Element("Storage")
+                    ?.Element("Directories")
+                    ?.Element("RoomUnavailableReasons")
+                    ?.Elements("Items")
+                    ?.Elements("Item")
+                    .Select(item => new Reason
+                    {
+                        id = (string)item.Attribute("ID"),
+                        typ = (string)item.Attribute("Class"),
+                        name = (string)item.Element("Name"),
+                        code = (string)item.Element("Code"),
+                        key = (string)item.Element("Key"),
+                    }).ToList());
+
 
                 var events = doc
                      .Element("Storage")
@@ -198,7 +225,7 @@ namespace VPlanDav2SPH
                          {
                              ev.classes.Add(classes.Find(a => a.id == id).code);
                          }
-                         if(ev.subjectId != null) ev.subject = subjects.Find(a => a.id == ev.subjectId).name;
+                         if(ev.subjectId != null) ev.subject = subjects.Find(a => a.id == ev.subjectId).code;
                          return ev;
                      })
                      .ToList();
@@ -232,6 +259,11 @@ namespace VPlanDav2SPH
                               ?.Element("Items")
                               ?.Elements("Item")
                               .FirstOrDefault(n => (string)n.Attribute("Class") == "Subject")
+                              ?.Attribute("ID"),
+                                newsClass = (string)item?.Element("New")
+                              ?.Element("Items")
+                              ?.Elements("Item")
+                              .FirstOrDefault(n => (string)n.Attribute("Class") == "Class")
                               ?.Attribute("ID"),
                             };
                             
@@ -273,12 +305,12 @@ namespace VPlanDav2SPH
                         if (absenceTime.teacherId != null)
                         {
                             entry.Lehrer = teachers.Find(a => a.id.Equals(absenceTime.teacherId))?.kuerzel ?? "";
-                            entry.Hinweis = absenceReasons.Find(a => a.id.Equals(absenceTime.id))?.code ?? "";
+                            entry.Hinweis = absenceReasons.Find(a => a.id.Equals(absenceTime.absenceReasonID))?.code?? "";
                         }
                         if (absenceTime.typ == "ClassAbsenceTime" && absenceTime.schoolClassId != null)
                         {
                             entry.Klasse = classes.Find(a => a.id == absenceTime.schoolClassId)?.code ?? "";
-                            entry.Hinweis = "Klasse fehlt";
+                            entry.Art = absenceReasons.Find(a => a.id.Equals(absenceTime.absenceReasonID))?.name ?? "";
                         }
 
                     }
@@ -292,26 +324,36 @@ namespace VPlanDav2SPH
                     {
                         entry.Fach = subjects.Find(a => a.id == change.newsSubject).code;
                     }
+                    if (change.newsClass != null)
+                    {
+                        entry.Klasse = classes.Find(a => a.id == change.newsClass).code;
+                    }
+
+
 
 
                     TimeFrameRow timeFrameRow = timeFrameRows.Find(a => (a.start.TimeOfDay == change.start.TimeOfDay));
                     if (timeFrameRow != null) entry.Stunde = timeFrameRow.name;
 
 
-                    entry.Tag = change.start.Day + "." + change.start.Month + "." + change.start.Year;
+                    entry.Tag = change.start.Day.ToString("D2") + "." + change.start.Month.ToString("D2") + "." + change.start.Year;
                     entry.Hinweis = change.information;
                     entry.Hinweis2 = change.message;
+                    if (change.typ == "Message") entry.Art = "Mitteilung";
 
                     if(change.timeId != null)
                     {
                         Event e = events.Find(a => a.lessonTimes.Exists(x => x.timeId == change.timeId));
                         if (e != null)
                         {
-                            entry.Fach = e.subject;
+                            entry.Fach_alt = e.subject;
                             entry.Raum = string.Join(", ", e.rooms);
+                            entry.Klasse_alt = string.Join(", ", e.classes);
+                            entry.Lehrer = string.Join(", ", e.teachers);
                         }
                     }
-
+                    if (entry.Fach == null) entry.Fach = entry.Fach_alt;
+                    if (entry.Klasse == null) entry.Klasse = entry.Klasse_alt;
                     vplan.Add(entry);
                 }
 
