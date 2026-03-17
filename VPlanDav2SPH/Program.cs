@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,7 +18,7 @@ namespace VPlanDav2SPH
     {
         //List<Teacher> teachers = new List<Teacher>();
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
 
             var config = new ConfigurationBuilder()
@@ -97,6 +98,7 @@ namespace VPlanDav2SPH
                             absenceReasonTyp = (string)item.Element("AbsenceReason")?.Attribute("Class"),
                             teacherId = (string)item.Element("Teacher")?.Attribute("ID"),
                             schoolClassId = (string)item.Element("Class")?.Attribute("ID"),
+                            roomId = (string)item.Element("Room")?.Attribute("ID"),
                             eventId = (string)item.Element("Event")?.Attribute("ID"),
                             typ = (string)item.Attribute("Class")
                         }).ToList();
@@ -265,6 +267,11 @@ namespace VPlanDav2SPH
                               ?.Elements("Item")
                               .FirstOrDefault(n => (string)n.Attribute("Class") == "Class")
                               ?.Attribute("ID"),
+                                newsRoom = (string)item?.Element("New")
+                              ?.Element("Items")
+                              ?.Elements("Item")
+                              .FirstOrDefault(n => (string)n.Attribute("Class") == "Room")
+                              ?.Attribute("ID"),
                             };
                             
 
@@ -284,7 +291,8 @@ namespace VPlanDav2SPH
                 List<StandIn> vplan = new List<StandIn>();
                 foreach (var change in relevantChanges)
                 {
-                    StandIn entry = new StandIn();
+                        if (change.typ == "SupervisionStandIn") continue;
+                        StandIn entry = new StandIn();
 
                     string start = timeFrameRows.Find(a => a.start.TimeOfDay == change.start.TimeOfDay)?.name ?? "";
                     string ende = timeFrameRows.Find(a => a.end.TimeOfDay == change.end.TimeOfDay)?.name ?? "";
@@ -312,11 +320,18 @@ namespace VPlanDav2SPH
                             entry.Klasse = classes.Find(a => a.id == absenceTime.schoolClassId)?.code ?? "";
                             entry.Art = absenceReasons.Find(a => a.id.Equals(absenceTime.absenceReasonID))?.name ?? "";
                         }
+                        if (absenceTime.typ == "RoomUnavailableTime" && absenceTime.roomId != null)
+                        {
+                            //entry.Klasse = classes.Find(a => a.id == absenceTime.schoolClassId)?.code ?? "";
+                            entry.Art = "Raumänderung";
+                            entry.Raum = rooms.Find(a => a.id.Equals(absenceTime.roomId)).code;
+                            entry.Hinweis = absenceReasons.Find(a => a.id.Equals(absenceTime.absenceReasonID)).code;
+                        }
 
                     }
+                    if (entry.Art == "Praktikum") continue;
 
-
-                    if(change.newsTeacher != null)
+                    if (change.newsTeacher != null)
                     {
                         entry.Vertreter = teachers.Find(a => a.id == change.newsTeacher).kuerzel;
                     }
@@ -354,6 +369,17 @@ namespace VPlanDav2SPH
                     }
                     if (entry.Fach == null) entry.Fach = entry.Fach_alt;
                     if (entry.Klasse == null) entry.Klasse = entry.Klasse_alt;
+                    if (change.typ == "RoomChange")
+                    {
+                       entry.Art = "Raumtausch";
+                        
+                        if (change.newsRoom != null)
+                        {
+                            entry.Raum_alt = entry.Raum;
+                            entry.Raum = rooms.Find(a => a.id.Equals(change.newsRoom)).code;
+
+                        }
+                    }
                     vplan.Add(entry);
                 }
 
@@ -362,7 +388,11 @@ namespace VPlanDav2SPH
                 StandIn.generateCSV(vplan, csvPath);
 
                 
-                Console.ReadLine();
+           //     Console.ReadLine();
+
+                var uploader = new VplanUploader(config);
+                await uploader.UploadAsync(csvPath);
+
 
 
             }
@@ -374,7 +404,12 @@ namespace VPlanDav2SPH
 
 
 
-            Console.ReadLine();
+         //   Console.ReadLine();
+        }
+        public async void uploadPlan(IConfigurationRoot config, string path)
+        {
+            var uploader = new VplanUploader(config);
+            await uploader.UploadAsync(path);
         }
     }
 

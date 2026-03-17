@@ -27,7 +27,7 @@ namespace VPlanDav2SPH
         static public void generateCSV(List<StandIn> vplan, string path)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("Tag; Lehrer; Stunde; Klasse; Art; Vertreter; Fach; Raum; Hinweis; Raum_alt; Fach_alt; Klasse_alt; Hinweis2; Lerngruppe");
+            sb.AppendLine("Tag;Lehrer;Stunde;Klasse;Art;Vertreter;Fach;Raum;Hinweis;Raum_alt;Fach_alt;Klasse_alt;Hinweis2;Lerngruppe");
             foreach (StandIn v in vplan)
             {
                 sb.AppendLine($"{v.Tag};{v.Lehrer ?? ""};{v.Stunde?.ToString() ?? ""};{v.Klasse ?? ""};{v.Art ?? ""};{v.Vertreter ?? ""};{v.Fach ?? ""};{v.Raum ?? ""};{v.Hinweis ?? ""};{v.Raum_alt ?? ""};{v.Fach_alt ?? ""};{v.Klasse_alt ?? ""};{v.Hinweis2 ?? ""};{v.Lerngruppe ?? ""}");

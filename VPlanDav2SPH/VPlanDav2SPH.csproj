@@ -109,6 +109,8 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TimeFrameRow.cs" />
+    <Compile Include="VplanUploader.cs" />
+    <Compile Include="VplanUploaderSettings.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
